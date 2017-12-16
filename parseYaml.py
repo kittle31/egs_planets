@@ -23,4 +23,5 @@ for root, dirs, files in os.walk(folder):
            playName = root.split('\\')[-1]
            obj = Playfield(playName)
            obj.parse(root+'\\'+file)
-           obj.report()
+           if (obj.get('PlayfieldType') == 'Planet'):
+              obj.report()
