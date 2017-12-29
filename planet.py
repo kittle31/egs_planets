@@ -11,6 +11,7 @@ class SectorPlanet :
         self.deny = []
         self.allow = []
         self.name = '<empty>'
+        self.diff = None
 
     @staticmethod
     def loadFrom(yml, planetDb):
@@ -49,13 +50,29 @@ class SectorPlanet :
             item.write(file)
 
     def getDiff(self):
+        if self.diff is not None :
+            return self.diff
+
         diff = 0
         if len(self.playfields) == 0 :
             return 0
 
         for item in self.playfields :
             diff += item.diff
-        return math.floor(diff / len(self.playfields))
+        self.diff = math.floor(diff / len(self.playfields))
+        return self.diff
+
+    def distanceTo(self, otherSector):
+        x1=self.location[0]
+        y1=self.location[1]
+        z1=self.location[2]
+        x2=otherSector.location[0]
+        y2=otherSector.location[1]
+        z2=otherSector.location[2]
+        xs = (x2-x1)**2
+        ys = (y2-y1)**2
+        zs = (z2-z1)**2
+        return math.sqrt(xs+ys+zs)
 
 class Planet :
     def __init__(self):

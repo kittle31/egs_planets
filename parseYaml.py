@@ -1,5 +1,7 @@
 import operator
 import os
+
+from SolarSystem import SolarSystem
 from Playfield import *
 from planet import SectorPlanet
 
@@ -13,30 +15,6 @@ basePlanets = ['Sun', 'Aestus Orbit', 'Akua Orbit', 'Skillon Orbit', 'Alien Outp
                'Ningues Orbit', 'Asteroid Field', 'Zeyhines Orbit', 'Oscutune Orbit', 'Instance Orbit',
                'Elemental Space Race Mission', 'Top Gun Mission']
 starterPlanets =['Omicron Orbit','Akua Orbit']
-
-def writeSector(path, sector):
-    file = open(path, 'w')
-    for item in sector:
-        item.write(file)
-    file.close()
-
-
-def parseSector(path):
-    # print(root, file)
-    with open(path, 'rb')  as fileHandle:
-        string = fileHandle.read()
-    string = string.replace(b"\t", b"")
-    obj = yaml.load(string)
-    if type(obj).__name__ == 'list':
-        planetList = obj
-    else:
-        planetList = obj['Sectors']
-    print(path)
-    planetSectors = []
-    for item in planetList:
-        planetSectors.append(SectorPlanet.loadFrom(item, planets))
-
-    return planetSectors
 
 
 def parsePlanet(path):
@@ -67,34 +45,38 @@ for item in playfieldFolders:
     parsePlanet(item)
 
 for item in sectorFolders:
-    sector = parseSector(item)
-    print(len(sector), 'planets')
+    sector = SolarSystem.parseSector(item, planets)
+    print(len(sector.sectors), 'planets')
 
     # move the planets around based on their difficulity
     # make several rings with 1-2 transitions between each ring
     rings = 3
     minDiff = 999
     maxDiff = -999
-    newPlanets = [x for x in sector if x.name not in basePlanets]
-    existingPlanets = [x for x in sector if x.name in basePlanets]
+    newPlanets = sector.getNewPlanets()
+    existingPlanets = sector.getExistingPlanets()
     for i in  newPlanets:
         diff = i.getDiff()
         if diff < minDiff:
             minDiff = diff
         if diff > maxDiff:
             maxDiff = diff
-    print("min", minDiff, "max", maxDiff)
+    #print("min", minDiff, "max", maxDiff)
     ranges = (maxDiff - minDiff) / rings
 
     planetRings = []
     ringSize = math.floor(len(newPlanets) / rings)
-    sector.sort(key=operator.methodcaller('getDiff'))
+    sector.sectors.sort(key=operator.methodcaller('getDiff'))
 
     offset=0
-    for i in range(rings) :
-        planetRings.append( newPlanets[offset:offset+ringSize])
-        offset+=ringSize
-    print(planetRings)
+    batch = []
+    for i in range(len(newPlanets)) :
+        batch.append(newPlanets[i])
+        if len(batch) >= ringSize :
+           planetRings.append(batch)
+           batch=[]
+    if len(batch) > 0 :
+       planetRings[-1].extend(batch)
 
     rad = 200
     pi2 = 3.14159265358 * 2
@@ -113,11 +95,21 @@ for item in sectorFolders:
             z=pl.location[2]
             newX = rad * math.cos((k * pi2) / len(ring))
             newZ = rad * math.sin((k * pi2) / len(ring))
-            print(pl.name, math.floor(newX), 30, math.floor(newZ))
+            #print(pl.name, math.floor(newX), 30, math.floor(newZ))
             pl.location[0] = math.floor(newX)
             pl.location[1] = 0
             pl.location[2] = math.floor(newZ)
             k+=1
+
+            for e in existingPlanets:
+                dist = e.distanceTo(pl)
+                #if pl.name == 'GX Feng Pho-Pho Orbit' :
+                #    print('break')
+                if dist < 250 :
+                    e.deny.append(pl.name)
+                    pl.deny.append(e.name)
+
         rad += 200
+
     worldName = item.split('\\')[-3]
-    writeSector(worldName+'-Sectors.yaml', sector)
+    sector.write(worldName+'-Sectors.yaml')
