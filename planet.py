@@ -26,7 +26,6 @@ class SectorPlanet :
             pl.playfields.append(Planet.loadFrom(item, planetDb ))
         if len(pl.playfields) > 0 :
             pl.name = pl.playfields[0].name
-
         return pl
 
     def __repr__(self):
@@ -73,6 +72,21 @@ class SectorPlanet :
         ys = (y2-y1)**2
         zs = (z2-z1)**2
         return math.sqrt(xs+ys+zs)
+
+    def addDeny(self, aName):
+        if self.name == 'Sun':
+            return
+        if type(aName).__name__ != 'str' :
+            print('break')
+            return
+        if aName not in self.deny :
+            self.deny.append(aName)
+        #else :
+        #    print('break')
+
+    def addAllDeny(self, aCol):
+        for item in aCol :
+            self.addDeny(item)
 
 class Planet :
     def __init__(self):
