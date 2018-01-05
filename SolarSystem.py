@@ -1,30 +1,34 @@
 import math
+import random
+
 import yaml
 import operator
-
 
 from planet import SectorPlanet
 
 basePlanets = ['Sun', 'Aestus Orbit', 'Akua Orbit', 'Skillon Orbit', 'Alien Outpost', 'Trading Outpost',
                'Omicron Orbit', 'Aitis Orbit', 'Masperon Orbit', 'Tallodar Orbit',
                'Ningues Orbit', 'Asteroid Field', 'Zeyhines Orbit', 'Oscutune Orbit', 'Instance Orbit',
+               'Sienna Orbit', 'Roggery Orbit',
                'Elemental Space Race Mission', 'Top Gun Mission']
-starterPlanets =['Omicron Orbit','Akua Orbit']
+starterPlanets = ['Omicron Orbit', 'Akua Orbit']
 
-def getFromRing(ring, idx) :
-    if idx < len(ring) and idx > 0 :
+
+def getFromRing(ring, idx):
+    if idx < len(ring) and idx > 0:
         return ring[idx]
-    if idx < 0 :
+    if idx < 0:
         return ring[idx]
     return ring[idx - len(ring)]
 
 
-class SolarSystem :
+class SolarSystem:
     def __init__(self):
-        self.path=''
-        self.sectors=[]
+        self.path = ''
+        self.sectors = []
         self.minDiff = None
         self.maxDiff = None
+        self.planetRings = []
 
     @staticmethod
     def loadFrom(yml, planetDb):
@@ -35,7 +39,7 @@ class SolarSystem :
         solar = SolarSystem()
         for item in planetList:
             pl = SectorPlanet.loadFrom(item, planetDb)
-            if len(pl.playfields) > 0 :
+            if len(pl.playfields) > 0:
                 solar.sectors.append(pl)
         return solar
 
@@ -47,7 +51,7 @@ class SolarSystem :
         string = string.replace(b"\t", b"")
         obj = yaml.load(string)
 
-        solar =  SolarSystem.loadFrom(obj,planetDb)
+        solar = SolarSystem.loadFrom(obj, planetDb)
         solar.path = path
         return solar
 
@@ -64,7 +68,7 @@ class SolarSystem :
         file.close()
 
     def sortDifficulty(self):
-        #sort the planets by difficulty
+        # sort the planets by difficulty
 
         self.minDiff = 999
         self.maxDiff = -999
@@ -86,47 +90,135 @@ class SolarSystem :
         existingPlanets = self.getExistingPlanets()
         newPlanets = self.getNewPlanets()
 
-        self.planetRings = []
-        ringSize = math.floor(len(self.getNewPlanets()) / rings)
-        batch = []
-        for i in range(len(newPlanets)) :
-            batch.append(newPlanets[i])
-            if len(batch) >= ringSize :
-               self.planetRings.append(batch)
-               batch=[]
-        if len(batch) > 0 :
-           self.planetRings[-1].extend(batch)
+        initialRadius = 350
+        radInc = 260
+        pi = 3.14159265358
+        planetDist = 150
 
-        rad = 200
-        pi2 = 3.14159265358 * 2
-        for ring in self.planetRings :
+        self.planetRings = []
+        batch = []
+        rad = initialRadius
+        angle = planetDist / rad
+
+        if len(newPlanets) == 0 :
+            return
+        radians = -pi
+        dist = 0
+        for planet in newPlanets:
+            x = rad * math.cos(radians)
+            y = rad * math.sin(radians)
+            planet.location[0] = math.floor(x)
+            planet.location[1] = 0
+            planet.location[2] = math.floor(y)
+            batch.append(planet)
+
+            dist += planetDist
+            radians += angle
+
+            if radians > pi :
+                self.planetRings.append(batch)
+                batch = []
+                rad += radInc
+                planetDist += 30
+                if planetDist > 200 :
+                    planetDist = 200
+                angle = planetDist / rad
+                radians = -pi
+
+        if len(batch) > 0:
+            self.planetRings.append(batch)
+
+        for ring in self.planetRings:
             k = 0
-            for pl in ring :
+            for pl in ring:
+                pl.allow = []
                 pl.deny = []
                 pl.deny.extend(starterPlanets)
-                if pl.name == 'GX Baalat Orbit' :
-                   print('break')
 
-                if len(ring) > 5 :
-                    pl.addDeny(getFromRing(ring,k-2).name)
-                    pl.addDeny(getFromRing(ring,k-3).name)
-                    pl.addDeny(getFromRing(ring,k+2).name)
-                    pl.addDeny(getFromRing(ring,k+3).name)
-
-                x=pl.location[0]
-                z=pl.location[2]
-                newX = rad * math.cos((k * pi2) / len(ring))
-                newZ = rad * math.sin((k * pi2) / len(ring))
-                #print(pl.name, math.floor(newX), 30, math.floor(newZ))
-                pl.location[0] = math.floor(newX)
-                pl.location[1] = 0
-                pl.location[2] = math.floor(newZ)
-                k+=1
+                if len(ring) > 5:
+                    pl.disconnectFrom(getFromRing(ring, k - 2))
+                    pl.disconnectFrom(getFromRing(ring, k - 3))
+                    pl.disconnectFrom(getFromRing(ring, k + 2))
+                    pl.disconnectFrom(getFromRing(ring, k + 3))
+                k += 1
 
                 for e in existingPlanets:
-                    if e.name != 'Sun' :
+                    if e.name != 'Sun':
                         dist = e.distanceTo(pl)
-                        if dist < 251 :
-                            e.addDeny(pl.name)
-                            pl.addDeny(e.name)
-            rad += 200
+                        if dist < 251:
+                            e.disconnectFrom(pl)
+            rad += radInc
+
+    def removeExtraConnections(self):
+        # remove connections between rings
+        if len(self.planetRings) > 0:
+            ringTo = self.planetRings[0]
+            for ringFrom in self.planetRings:
+                if ringFrom == ringTo:
+                    continue
+                for plFrom in ringFrom:
+                    for plTo in ringTo:
+                        dist = plFrom.distanceTo(plTo)
+                        if dist < 250 :
+                            plFrom.disconnectFrom(plTo)
+
+                ringTo = ringFrom
+
+    def connectRingsToDefault(self):
+        # connect the rings to each other and to the starting planets
+
+        connections = 3
+
+        for idx in range(len(self.planetRings)):
+            fromRing = self.planetRings[idx]
+            if idx + 1 >= len(self.planetRings):
+                continue
+            toRing = self.planetRings[idx + 1]
+
+            pickedSystems = []
+            for i in range(connections):
+                fromSystem = random.choice(toRing)
+                while fromSystem in pickedSystems :
+                    fromSystem = random.choice(fromRing)
+                # find system in next ring closest to this system
+                closest = fromRing[0]
+                for planet in fromRing:
+                    distFrom = fromSystem.distanceTo(planet)
+                    distClose = fromSystem.distanceTo(closest)
+                    if distFrom < distClose:
+                        closest = planet
+
+                distFrom = fromSystem.distanceTo(closest)
+                print("ring",idx,"to",idx+1,"connect from", fromSystem.name, "to", closest.name, "dist",distFrom)
+                closest.connectTo(fromSystem)
+                pickedSystems.append(fromSystem)
+
+        if len(self.planetRings) == 0:
+            return
+        # connect inner ring to starter planets
+        for pName in starterPlanets:
+            starterPlanet = [x for x in self.sectors if x.name == pName]
+            if len(starterPlanet) == 0:
+                continue
+            starterPlanet = starterPlanet[0]
+            closest = self.planetRings[0][0]
+            for planet in self.planetRings[0]:
+                dist = planet.distanceTo(starterPlanet)
+                distClose = closest.distanceTo(starterPlanet)
+                if dist < distClose:
+                    closest = planet
+
+            print("connect from", starterPlanet.name, "to", closest.name)
+            starterPlanet.connectTo(closest)
+
+        # connect any base planets that are < 15 AU
+        for pName in basePlanets :
+            basePlanet = [x for x in self.sectors if x.name == pName]
+            if len(basePlanet) == 0:
+                continue
+            basePlanet = basePlanet[0]
+            for planet in self.planetRings[0] :
+                dist = planet.distanceTo(basePlanet)
+                if dist < 150 :
+                   planet.connectTo(basePlanet)
+

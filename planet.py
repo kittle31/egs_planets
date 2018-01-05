@@ -73,16 +73,26 @@ class SectorPlanet :
         zs = (z2-z1)**2
         return math.sqrt(xs+ys+zs)
 
+    def connectTo(self, otherPlanet):
+        #ensure there is a connection between the 2 planets
+        if self.name in otherPlanet.deny:
+            otherPlanet.deny.remove(self.name)
+        if otherPlanet.name in self.deny:
+            self.deny.remove(otherPlanet.name)
+
+        if self.distanceTo(otherPlanet) > 250 :
+           self.allow.append(otherPlanet.name)
+           otherPlanet.allow.append(self.name)
+
+    def disconnectFrom(self, otherPlanet):
+        self.addDeny(otherPlanet.name)
+        otherPlanet.addDeny(self.name)
+
     def addDeny(self, aName):
         if self.name == 'Sun':
             return
-        if type(aName).__name__ != 'str' :
-            print('break')
-            return
         if aName not in self.deny :
             self.deny.append(aName)
-        #else :
-        #    print('break')
 
     def addAllDeny(self, aCol):
         for item in aCol :
@@ -108,6 +118,8 @@ class Planet :
            planet = planetDb.get(p.templateName, None)
            if planet is not None :
                p.diff = planet.getDiff()
+           else :
+               print('playfield',p.templateName,'not found')
         return p
 
     def __repr__(self):
