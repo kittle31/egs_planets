@@ -15,31 +15,29 @@ basePlanets = ['Sun', 'Aestus Orbit', 'Akua Orbit', 'Skillon Orbit', 'Alien Outp
                'Elemental Space Race Mission', 'Top Gun Mission']
 starterPlanets =['Omicron Orbit','Akua Orbit']
 
-def rep_res(dumper, data) :
-    print('break')
-    yaml.dumper.Dumper.represent_data()
-    return dumper.represent_scalar(u'RandomResources:', u'%sd%s', data)
-yaml.add_representer(PlanetResource, rep_res)
-
 def parsePlanet(path):
     global minNoise, maxNoise, minPerlin, maxPerlin
 
     parts = path.split('\\')
     playName = parts[-2]
     obj = Playfield(playName)
+    print(path)
     obj.parse(path)
     planets[obj.playfieldName] = obj
+    if (obj.get('PlayfieldType') == 'Planet'):
+        obj.report()
 
-    obj.write(path + "1")
+    #obj.write(path + "1")
     if playName.startswith('GX ') :
         poi = obj.setPOIToRegen()
         met = obj.removeGoldMeteor()
-        if poi or met :
+        dron = obj.fixDroneSetup()
+        if poi or met or dron :
             obj.write(path)
 
 testP = Playfield()
-testP.generateResources()
-testP.write('D:\\temp\\playfield.yaml')
+testP.randomValues()
+testP.write('E:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Playfields\\testworld\\playfield.yaml')
 
 for root, dirs, files in os.walk(folder):
     for file in files:
