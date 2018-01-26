@@ -1,8 +1,8 @@
 import math
 import random
-
-import yaml
 import operator
+from ruamel.yaml import YAML
+yaml = YAML()
 
 from planet import SectorPlanet
 
@@ -32,7 +32,7 @@ class SolarSystem:
 
     @staticmethod
     def loadFrom(yml, planetDb):
-        if type(yml).__name__ == 'list':
+        if type(yml).__name__ == 'CommentedSeq':
             planetList = yml
         else:
             planetList = yml['Sectors']
