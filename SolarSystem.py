@@ -66,6 +66,7 @@ class SolarSystem:
         for item in self.sectors:
             item.write(file)
         file.close()
+        print('wrote', path)
 
     def sortDifficulty(self):
         # sort the planets by difficulty
@@ -80,7 +81,6 @@ class SolarSystem:
                 self.minDiff = diff
             if diff > self.maxDiff:
                 self.maxDiff = diff
-        # print("min", minDiff, "max", maxDiff)
         self.sectors.sort(key=operator.methodcaller('getDiff'))
 
     def makeRings(self, rings):
@@ -148,6 +148,8 @@ class SolarSystem:
                         if dist < 251:
                             e.disconnectFrom(pl)
             rad += radInc
+        self.removeExtraConnections()
+        self.connectRingsToDefault()
 
     def removeExtraConnections(self):
         # remove connections between rings
@@ -222,3 +224,37 @@ class SolarSystem:
                 if dist < 150 :
                    planet.connectTo(basePlanet)
 
+    def makeWeb(self):
+        #reconnect the planets into a nice web
+        if len(self.sectors) < 4 :
+            return
+
+        connections = 4
+        for planet in self.sectors :
+            if planet.isSun():
+                continue
+
+            planet.clearDeny()
+            planet.clearAllow()
+
+        for item in self.sectors:
+            if item.isSun():
+                continue
+            distances = []
+            for item1 in self.sectors :
+                if item1==item or item1.isSun() :
+                    continue
+                dist = item.distanceTo(item1)
+                distances.append((dist, item1))
+            distances.sort(key=operator.itemgetter(0))
+
+            conn = 0
+            for distPlanet in distances :
+                if conn < connections and len(item.allow) < connections :
+                    item.connectTo( distPlanet[1])
+                    conn +=1
+                else :
+                    if item.isConnectedTo(distPlanet[1]):
+                        continue
+                    if distPlanet[0] < 250 :
+                        item.disconnectFrom( distPlanet[1])

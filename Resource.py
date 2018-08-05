@@ -4,6 +4,7 @@ resourceT1 = ['IronResource', 'CopperResource', 'SiliconResource', 'PromethiumRe
 resourceT2 = ['CobaltResource','NeodymiumResource','MagnesiumResource',]
 resourceT3 = ['SathiumResource','ErestrumResource','ZascosiumResource']
 resourceSpecial = ['PentaxidResource', 'GoldResource']
+ignoreList = ['GoldResource', 'PentaxidResource']
 
 def intFloor(start, end, floor) :
     value = random.randint(start, end)
@@ -52,6 +53,8 @@ class PlanetResource() :
     def parse(cls, value):
         #value will be a list of instances
         result = []
+        if value is None :
+            return result
         for item in value :
             obj = PlanetResource()
             for key in item :
@@ -71,52 +74,87 @@ class PlanetResource() :
         return ress
 
     @classmethod
+    def randomFromList(cls, list, emptyCutoff, missingCutoff, tier):
+        #random list of resources
+        if emptyCutoff > 0 and random.randint(1,100) <= emptyCutoff :
+            # 50% chance of no res
+            return []
+        resList = list[:]
+        if random.randint(1,100) <= missingCutoff :
+            missing = random.choice(list)
+            resList.remove(missing)
+        res = PlanetResource.instanceFromNames(resList)
+        for item in res :
+            item.DroneProb += (tier / 10)
+            if item.DroneProb > 1 :
+                item.DroneProb = 1
+        return res
+
+    @classmethod
     def randomT1(cls):
         # random selection of T1 resources
-        resList = resourceT1[:]
-        if random.randint(1,10) <= 2 :
-            # 20% chance to drop 1 resource
-            missing = random.choice(resourceT1)
-            resList.remove(missing)
+        return PlanetResource.randomFromList(resourceT1, 0, 20, 1)
 
-        return PlanetResource.instanceFromNames(resList)
+        # resList = resourceT1[:]
+        # if random.randint(1,10) <= 2 :
+        #     # 20% chance to drop 1 resource
+        #     missing = random.choice(resourceT1)
+        #     resList.remove(missing)
+        #
+        # return PlanetResource.instanceFromNames(resList, 1)
 
     @classmethod
     def randomT2(cls):
         #random list of T2 resources
-        if random.randint(1,10) <= 5 :
-            # 50% chance of no T2 res
-            return []
-        resList = resourceT2[:]
-        if random.randint(1,10) <= 4 :
-            missing = random.choice(resourceT2)
-            resList.remove(missing)
-        return PlanetResource.instanceFromNames(resList)
+        return PlanetResource.randomFromList(resourceT2, 50, 40, 2)
+
+        # if random.randint(1,10) <= 5 :
+        #     # 50% chance of no res
+        #     return []
+        # resList = resourceT2[:]
+        # if random.randint(1,10) <= 4 :
+        #     missing = random.choice(resourceT2)
+        #     resList.remove(missing)
+        # return PlanetResource.instanceFromNames(resList, 2)
 
     @classmethod
     def randomT3(cls):
-        #random list of T2 resources
-        if random.randint(1,100) <= 75 :
-            # 75% chance of no T2 res
-            return []
-        resList = resourceT3[:]
-        if random.randint(1,10) <= 4 :
-            missing = random.choice(resourceT3)
-            resList.remove(missing)
-        return PlanetResource.instanceFromNames(resList)
+        #random list of T3 resources
+        return PlanetResource.randomFromList(resourceT3, 75, 30, 3)
+
+        # if random.randint(1,100) <= 75 :
+        #     # 75% chance of no res
+        #     return []
+        # resList = resourceT3[:]
+        # if random.randint(1,10) <= 4 :
+        #     missing = random.choice(resourceT3)
+        #     resList.remove(missing)
+        # return PlanetResource.instanceFromNames(resList, 3)
 
     @classmethod
     def randomSpecial(cls):
-        #random list of T2 resources
-        if random.randint(1,100) <= 80 :
-            # 80 chance of no res
-            return []
-        resList = resourceSpecial[:]
-        if random.randint(1,10) <= 4 :
-            missing = random.choice(resourceSpecial)
-            resList.remove(missing)
-        return PlanetResource.instanceFromNames(resList)
+        #random list of special resources
+        return PlanetResource.randomFromList(resourceSpecial, 80, 40, 4)
+        # if random.randint(1,100) <= 80 :
+        #     # 80 chance of no res
+        #     return []
+        # resList = resourceSpecial[:]
+        # if random.randint(1,10) <= 4 :
+        #     missing = random.choice(resourceSpecial)
+        #     resList.remove(missing)
+        # return PlanetResource.instanceFromNames(resList, 4)
 
+    def makeMeteor(self):
+        if self.Name in ignoreList :
+            return None
+        if random.uniform(0,1) <= 0.15 :
+            #15% chance of no meteor
+            return None
+
+        m = MeteorResource()
+        m.Name = self.Name
+        m.random()
+        return m
 
 class MeteorResource :
     def __init__(self):
@@ -124,14 +162,19 @@ class MeteorResource :
         self.Threshold = 0
         self.Amount = 0
 
+    def random(self):
+        self.Threshold = uniformFloor(0 ,1, 0.4)
+        self.Amount = uniformFloor(-0.1, 1, 0.1)
+
     @classmethod
-    def random(cls, tier):
-        res = MeteorResource()
-        if tier == 1 :
-            res.Name = random.choice(resourceT1)
-        if tier == 2 :
-            res.Name = random.choice(resourceT2)
-        if tier == 3 :
-            res.Name = random.choice(resourceT3)
-        res.Threshold = random.uniform(0.1, 0.5)
-        res.Amount = random.uniform(0.1, 0.5)
+    def parse(self, value):
+        #value will be a list of instances
+        result = []
+        if value is None :
+            return None
+        for item in value :
+            obj = MeteorResource()
+            for key in item :
+                setattr(obj, key, item[key])
+            result.append(obj)
+        return result

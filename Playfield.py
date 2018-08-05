@@ -1,6 +1,6 @@
 import math
 import random
-from Resource import PlanetResource
+from Resource import PlanetResource, MeteorResource
 
 from ruamel.yaml import YAML
 yaml = YAML(typ='unsafe')
@@ -60,22 +60,65 @@ keys = ['RealRadius',
         'Biome',
         'SubBiomes',
         'POIs',
+        'DroneSpawning',
         'DroneBaseSetup',
         'CreatureSpawning'
         ]
 
-objectKeys = {'RandomResources' : PlanetResource}
+objectKeys = {'RandomResources' : PlanetResource, 'AsteroidResources' : MeteorResource}
 
 terrainTypes = ['Temperate', 'Alien', 'Lava', 'Temperate2b', 'Barren', 'Desert', 'Desert2', 'DesertNew',
                 'TemperateNew2', 'NewTemperate', 'NewAlien', 'NewSnow', 'NewDesert', 'NewDesert2', 'Lava2New',
-                'NewTemperate500', 'NewAlien_V2', 'NewBarren', 'NewBarren_V2', 'NewDesert2_V2', 'NewDesert_V2',
-                'NewLava', 'NewLava2', 'NewLava2_V2', 'NewLava_V2', 'NewOcean', 'NewOcean_V2', 'NewSnow_V2',
-                'NewTemperate_V2', 'Snow', 'TemperateNew3', 'NewMoon2']
+                'NewTemperate500', 'NewBarren',
+                'NewLava', 'NewLava2',  'NewOcean'
+                #'NewTemperate_V2', 'Snow', 'TemperateNew3', 'NewMoon2',
+                #'NewAlien_V2', 'NewLava2_V2', 'NewLava_V2', 'NewOcean_V2',
+                #'NewSnow_V2', 'NewBarren_V2', 'NewDesert2_V2', 'NewDesert_V2',
+                ]
 
 waterTypes = ['WaterBlue', 'WaterGreen', 'WaterBrown', 'RockLava03']
 
 sunFlareTypes = ['SunFlareBlue','SunFlareWhite', 'SunFlareWhite2',
                  'SunFlareWhite3', 'SunFlareYellow', 'SunFlarePurple']
+biomeTextures = [
+    'AlienBlack01',
+'AlienGreen',
+'AlienGreen06',
+'AlienGreen07',
+'Bedrock',
+'BedrockLava',
+'Clay',
+'Cliff',
+'CliffBrown',
+'CliffDark',
+'DirtCliff',
+'Grass01BrownCliff',
+'Grass02Cliff',
+'Grass03Cliff',
+'Grass05Cliff',
+'GravelRockBrown03',
+'RockBlack',
+'RockBrown01',
+'RockBrown03',
+'RockGrassCliff',
+'RockGrey08',
+'RockGrey08Lava',
+'RockGrey08Lava02',
+'RockLava02',
+'RockLava04',
+'RockLava05',
+'SandBeach',
+'SandBeach01Cliff',
+'SandYellow03Clay',
+'SeaGround',
+'SeaGround02',
+'Snow08',
+'Snow08Cliff',
+'Snow08RockBrown03',
+'SnowRock04',
+'SnowyGrass',
+'Stone',
+'StoneBeach' ]
 
 def randBool() :
     if random.randint(0,1) == 0 :
@@ -125,6 +168,7 @@ class Playfield:
         self.defaultBiome()
         self.generateResources()
         self.generatePOI()
+        self.props['Description'] = self.props['Description'] + " "+self.props['Terrain']['Name']
 
     def setDefaults(self):
         #set default and static values
@@ -180,17 +224,34 @@ class Playfield:
         self.props['CloudsHorizonColor'] = randomColor()
 
         # Wind Speed
-        self.props['WindSpeed'] = random.randint(0,10)
+        self.props['WindSpeed'] = random.randint(0,30)
+
+        #Drones
+        self.props['DroneSpawning'] = {
+        'Random' : [{
+            'DronesMinMax': [5, 10],
+            'CenterX': 2500,
+            'Radius': 1500
+            }]
+        }
 
     def generateResources(self):
         self.RandomResources = PlanetResource.randomList()
+        self.AsteroidResources = [x.makeMeteor() for x in self.RandomResources]
+        self.AsteroidResources = [x for x in self.AsteroidResources if x is not None]
 
     def parse(self, path):
         self.path = path
         with open(self.path, 'rb')  as fileHandle:
             string = fileHandle.read()
             string = string.replace(b"\t", b"")
-            obj = yaml.load(string)
+            string = string.replace(b"E-05", b".0E-05")
+            string = string.replace(b"DayShadowStrength", b"DayShadowStrength1", 1)
+            try :
+                obj = yaml.load(string)
+            except Exception as e:
+                print(path)
+                print(e)
 
         for key in obj:
             value = obj.get(key)
@@ -210,9 +271,7 @@ class Playfield:
 
         if self.PlayfieldType == 'Planet':
             obj = self.get('Terrain')
-            if obj is None:
-                print('no terrain name', path)
-            else:
+            if obj is not None:
                 self.TerrainType = obj.get('Name', None)
 
     def write(self, path):
@@ -247,12 +306,42 @@ class Playfield:
             v = self.extraProps.get(key, None)
         return v
 
+    @classmethod
+    def reportHeader(cls):
+        print('Name, TerrainType, PayfieldType, diff, TempDay, TempNite, PerlinCol, NoiseStrength, Tex1, Tex2, Tex3, Tex4')
+
     def report(self):
-        print(self.playfieldName, ',', self.TerrainType, ',',
-              self.PlayfieldType, ',', self.get('Difficulty'), ',',
-              self.TemperatureDay, ',',self.TemperatureNight,',',
-              self.get('Terrain').get('PerlinCol', None),',',
-              self.get('Terrain').get('NoiseStrength', None)
+        b = self.get('MainBiome')
+        t1=''
+        t2=''
+        t3=''
+        t4=''
+        pCol = ''
+        noise = ''
+        if self.get('Terrain') is not None :
+            pCol = self.get('Terrain').get('PerlinCol', None)
+            noise = self.get('Terrain').get('NoiseStrength', None)
+        if b is not None:
+            tex = b.get('Textures', None)
+            t1 = tex[0]
+            t2 = tex[1]
+            t3 = tex[2]
+            if len(tex) > 3 :
+                t4 = tex[3]
+            else :
+                t4 = ''
+        print(self.playfieldName, ',',
+              self.TerrainType, ',',
+              self.PlayfieldType, ',',
+              self.get('Difficulty'), ',',
+              self.TemperatureDay, ',',
+              self.TemperatureNight,',',
+              pCol,',',
+              noise, ', ',
+              t1, ', ',
+              t2, ', ',
+              t3, ', ',
+              t4
               )
 
     def removeGoldMeteor(self):
@@ -390,7 +479,7 @@ class Playfield:
         # create a new terrain for the playfield
         self.Terrain = {
             'Name': random.choice(terrainTypes),
-            'PoleLevel': 30,
+            'PoleLevel': random.randint(28, 34),
             'NoiseStrength': random.uniform(0 , 0.8),
             'PerlinCol': random.uniform(0, 1.5),
             'ColorChange': {
@@ -406,14 +495,16 @@ class Playfield:
 
     def defaultBiome(self):
         #create minimal biome
+        textures = random.sample(biomeTextures, 4)
         self.props['MainBiome'] = {
             'Textures' : [
-                 ['Grass02Cliff',  1],
-                 ['Cliff', 2],
-                 ['RockBrown01', 0],
-                 ['BedrockLava', 1]
+                 [ textures[0],  1],
+                 [ textures[1], 2],
+                 [ textures[2], 0],
+                 [ textures[3], 1]
              ]
         }
+
         self.props['Biome'] = [{
             'Altitude' : [0,10],
             'Slope' : [0, 2],

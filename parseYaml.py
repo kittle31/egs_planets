@@ -21,7 +21,6 @@ def parsePlanet(path):
     parts = path.split('\\')
     playName = parts[-2]
     obj = Playfield(playName)
-    print(path)
     obj.parse(path)
     planets[obj.playfieldName] = obj
     if (obj.get('PlayfieldType') == 'Planet'):
@@ -40,6 +39,7 @@ testP.randomValues()
 testP.write('E:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Playfields\\testworld\\playfield.yaml')
 
 for root, dirs, files in os.walk(folder):
+    dirs[:] = [d for d in dirs if d not in ['LegacyPlayfields']]
     for file in files:
         if file.lower() == 'sectors.yaml':
             sectorFolders.append(root + '\\' + file)
@@ -47,18 +47,27 @@ for root, dirs, files in os.walk(folder):
         if file.lower() == 'playfield.yaml':
             playfieldFolders.append(root + '\\' + file)
 
-for item in playfieldFolders:
-    parsePlanet(item)
+# Playfield.reportHeader()
+# for item in playfieldFolders:
+#     parsePlanet(item)
+#inp ='E:\\games\\Steam\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Scenarios\\new galaxy\\Sectors\\sectors.yaml'
+#oup = 'E:\\games\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Saves\\Games\\planet testing\\Sectors\\sectors.yaml'
+inp ='E:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Scenarios\\BanditsGalaxy\\Sectors\\sectors.yaml'
+oup = 'E:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Saves\\Games\\NewGame\\Sectors\\sectors.yaml'
 
-for item in sectorFolders:
-    sector = SolarSystem.parseSector(item, planets)
-    print(len(sector.sectors), 'planets')
+sector = SolarSystem.parseSector(inp, planets)
+print(len(sector.sectors), 'planets')
+sector.makeWeb()
+sector.write(oup)
 
-    # move the planets around based on their difficulity
-    # make several rings with 1-2 transitions between each ring
-    sector.makeRings(3)
-    sector.removeExtraConnections()
-    sector.connectRingsToDefault()
-
-    worldName = item.split('\\')[-3]
-    sector.write(worldName+'-Sectors.yaml')
+# for item in sectorFolders:
+#     sector = SolarSystem.parseSector(item, planets)
+#     print(len(sector.sectors), 'planets')
+#
+#     # move the planets around based on their difficulity
+#     # make several rings with 1-2 transitions between each ring
+#
+#     sector.makeWeb()
+#
+#     worldName = item.split('\\')[-3]
+#     sector.write(worldName+'-Sectors.yaml')

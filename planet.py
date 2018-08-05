@@ -12,6 +12,7 @@ class SectorPlanet :
         self.allow = []
         self.name = '<empty>'
         self.diff = None
+        self.sectorMapType = None
 
     @staticmethod
     def loadFrom(yml, planetDb):
@@ -22,10 +23,15 @@ class SectorPlanet :
         pl.icon = yml.get('Icon', None)
         pl.allow = yml.get('Allow', [])
         pl.deny = yml.get('Deny', [])
+        pl.sectorMapType = yml.get('SectorMapType', None)
         for item in yml.get('Playfields', []) :
             pl.playfields.append(Planet.loadFrom(item, planetDb ))
         if len(pl.playfields) > 0 :
             pl.name = pl.playfields[0].name
+            for item in pl.playfields :
+                if item.name.endswith("Orbit"):
+                    pl.name = item.name
+                    break
         return pl
 
     def __repr__(self):
@@ -43,6 +49,8 @@ class SectorPlanet :
             file.write('  Allow: '+str(self.allow)+'\n')
         if self.deny is not None :
             file.write('  Deny: '+str(self.deny)+'\n')
+        if self.sectorMapType is not None :
+            file.write('  SectorMapType: '+str(self.sectorMapType)+'\n')
         file.write('  Playfields:\n')
         for item in self.playfields :
             file.write('  - ')
@@ -80,23 +88,45 @@ class SectorPlanet :
         if otherPlanet.name in self.deny:
             self.deny.remove(otherPlanet.name)
 
-        if self.distanceTo(otherPlanet) > 250 :
-           self.allow.append(otherPlanet.name)
-           otherPlanet.allow.append(self.name)
+        self.addAllow(otherPlanet.name)
+        otherPlanet.addAllow(self.name)
+
+    def addAllow(self, aName):
+        if aName not in self.allow :
+            self.allow.append(aName)
 
     def disconnectFrom(self, otherPlanet):
+        if otherPlanet.name in self.allow :
+            print('break')
+        if self.name in otherPlanet.allow:
+            print('break')
         self.addDeny(otherPlanet.name)
         otherPlanet.addDeny(self.name)
 
     def addDeny(self, aName):
-        if self.name == 'Sun':
-            return
         if aName not in self.deny :
             self.deny.append(aName)
 
     def addAllDeny(self, aCol):
         for item in aCol :
             self.addDeny(item)
+
+    def clearDeny(self):
+        self.deny=[]
+
+    def clearAllow(self):
+        self.allow=[]
+
+    def isSun(self):
+        if self.name == 'Sun':
+            return True
+        if self.name == 'Sun Star':
+            return True
+        return False
+
+    def isConnectedTo(self, otherPlanet):
+        return self.name in otherPlanet.allow  and otherPlanet.name in self.allow
+
 
 class Planet :
     def __init__(self):
@@ -118,8 +148,6 @@ class Planet :
            planet = planetDb.get(p.templateName, None)
            if planet is not None :
                p.diff = planet.getDiff()
-           else :
-               print('playfield',p.templateName,'not found')
         return p
 
     def __repr__(self):
