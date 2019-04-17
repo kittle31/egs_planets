@@ -36,7 +36,7 @@ def parsePlanet(path):
 
 testP = Playfield()
 testP.randomValues()
-testP.write('E:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Playfields\\testworld\\playfield.yaml')
+testP.write('F:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Playfields\\testworld\\playfield.yaml')
 
 for root, dirs, files in os.walk(folder):
     dirs[:] = [d for d in dirs if d not in ['LegacyPlayfields']]
@@ -50,14 +50,14 @@ for root, dirs, files in os.walk(folder):
 # Playfield.reportHeader()
 # for item in playfieldFolders:
 #     parsePlanet(item)
-#inp ='E:\\games\\Steam\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Scenarios\\new galaxy\\Sectors\\sectors.yaml'
-#oup = 'E:\\games\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Saves\\Games\\planet testing\\Sectors\\sectors.yaml'
-inp ='E:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Scenarios\\BanditsGalaxy\\Sectors\\sectors.yaml'
-oup = 'E:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Saves\\Games\\NewGame\\Sectors\\sectors.yaml'
+inp ='F:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Scenarios\\BanditsGalaxy\\Sectors\\Sectors.yaml'
+oup = 'F:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Saves\\Games\\NewGame\\Sectors\\Sectors.yaml'
+# inp ='F:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Content\\Scenarios\\BanditsGalaxy\\Sectors\\sectors.yaml'
+# oup = 'F:\\games\\Steam\\steamapps\\common\\Empyrion - Galactic Survival\\Saves\\Games\\NewGame\\Sectors\\sectors.yaml'
 
 sector = SolarSystem.parseSector(inp, planets)
 print(len(sector.sectors), 'planets')
-sector.makeWeb()
+sector.makeMiniSystems(5)
 sector.write(oup)
 
 # for item in sectorFolders:

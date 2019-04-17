@@ -1,3 +1,4 @@
+import itertools
 import math
 import random
 import operator
@@ -29,6 +30,7 @@ class SolarSystem:
         self.minDiff = None
         self.maxDiff = None
         self.planetRings = []
+        self.buildVersion = None
 
     @staticmethod
     def loadFrom(yml, planetDb):
@@ -41,6 +43,7 @@ class SolarSystem:
             pl = SectorPlanet.loadFrom(item, planetDb)
             if len(pl.playfields) > 0:
                 solar.sectors.append(pl)
+        solar.buildVersion = yml['Build']
         return solar
 
     @staticmethod
@@ -63,6 +66,9 @@ class SolarSystem:
 
     def write(self, path):
         file = open(path, 'w')
+        file.write('---\n')
+        file.write('Build: '+str(self.buildVersion)+'\n')
+        file.write('Sectors:\n')
         for item in self.sectors:
             item.write(file)
         file.close()
@@ -224,24 +230,12 @@ class SolarSystem:
                 if dist < 150 :
                    planet.connectTo(basePlanet)
 
-    def makeWeb(self):
-        #reconnect the planets into a nice web
-        if len(self.sectors) < 4 :
-            return
-
-        connections = 4
-        for planet in self.sectors :
-            if planet.isSun():
-                continue
-
-            planet.clearDeny()
-            planet.clearAllow()
-
-        for item in self.sectors:
+    def makeWebFromList(self, systems, connections, minConnections):
+        for item in systems:
             if item.isSun():
                 continue
             distances = []
-            for item1 in self.sectors :
+            for item1 in systems :
                 if item1==item or item1.isSun() :
                     continue
                 dist = item.distanceTo(item1)
@@ -258,3 +252,104 @@ class SolarSystem:
                         continue
                     if distPlanet[0] < 250 :
                         item.disconnectFrom( distPlanet[1])
+            if conn < minConnections:
+                #find 1st non-connected planet in list
+                for distPlanet in distances :
+                    if not item.isConnectedTo(distPlanet[1]) :
+                        item.connectTo(distPlanet[1])
+                        conn+=1
+                    if conn >= minConnections :
+                       break
+
+    def clearAllConnections(self):
+        for planet in self.sectors :
+            if planet.isSun():
+                continue
+            planet.clearDeny()
+            planet.clearAllow()
+
+    def makeWeb(self):
+        #reconnect the planets into a nice web
+        if len(self.sectors) < 4 :
+            return
+        self.clearAllConnections()
+        self.makeWebFromList(self.sectors, 4, 2)
+
+    def distSq(self, t1, t2):
+        xs = (t2[0] - t1[0]) ** 2
+        ys = (t2[1] - t1[1]) ** 2
+        zs = (t2[2] - t1[2]) ** 2
+        return xs + ys + zs
+
+
+    def arrangePoints(self, center, spread, endSize):
+        #  arrange points evenly in space
+        # (1) Randomly generate many more points in the volume than you need, say 100n points.
+        # (2) Step through the points and find the point whose distance to any other point is the smallest. Delete this point.
+        # (3) Repeat step 2 until you are down to the n points that you want.
+
+        points = []
+        for i in range(endSize * 50):
+            x = random.randint(-spread, spread) + center[0]
+            y = random.randint(-spread, spread) + center[1]
+            z = random.randint(-spread, spread) + center[2]
+            points.append((x, y, z))
+
+        while len(points) > endSize:
+            closePair = None
+            minDist = float("inf")
+            for p1, p2, in itertools.combinations(points, 2):
+                d = self.distSq(p1, p2)
+                if d < minDist :
+                   minDist = d
+                   closePair = (p1, p2)
+            points.remove(closePair[0])
+        return points
+
+    def makeMiniSystems(self, systemSize):
+        stations =[]
+        systems =[[]]
+
+        systemIndex=0
+        random.shuffle(self.sectors)
+        random.shuffle(self.sectors)
+
+        for item in self.sectors :
+            if item.isSun() :
+                continue
+            # if item.isStation() :
+            #     stations.append(item)
+            #     continue
+            if len(systems[systemIndex]) >= systemSize :
+                systems.append([])
+                systemIndex+=1
+            systems[systemIndex].append(item)
+        if len(systems[-1]) == 1 :
+            # 1 leftover, put it in the last bucket
+            leftover= systems[-1][0]
+            systems.remove( systems[-1] )
+            systems[-1].append(leftover)
+
+        self.clearAllConnections()
+        systemLocs= self.arrangePoints((0,0,0), 400, len(systems) + len(stations))
+
+        #use these locs for the center of each system cluster
+        for i in range(len(systems)) :
+            center = systemLocs[i]
+            localLocs = self.arrangePoints( center, 55, len(systems[i]) )
+            for locIdx in range(len(localLocs)):
+                systems[i][locIdx].location[0] = localLocs[locIdx][0]
+                systems[i][locIdx].location[1] = localLocs[locIdx][1]
+                systems[i][locIdx].location[2] = localLocs[locIdx][2]
+            self.makeWebFromList(systems[i],3, 3)
+
+        # give stations their locations
+        # for i in range(len(stations)):
+        #     stations[i].location[0] = systemLocs[i + len(systems)][0]
+        #     stations[i].location[1] = systemLocs[i + len(systems)][1]
+        #     stations[i].location[2] = systemLocs[i + len(systems)][2]
+
+        linkSystems = [ x[0] for x in systems]
+        linkSystems.extend(stations)
+        self.makeWebFromList(linkSystems, 4, 2)
+        print(systems)

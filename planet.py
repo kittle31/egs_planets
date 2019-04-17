@@ -41,19 +41,20 @@ class SectorPlanet :
             return self.playfields[0].name
 
     def write(self, file):
-        file.write('- Coordinates: '+str(self.location)+'\n')
-        file.write('  Color: '+str(self.color)+'\n')
+        file.write('  - Coordinates: '+str(self.location)+'\n')
+        if self.color is not None :
+            file.write('    Color: '+str(self.color)+'\n')
         if self.icon is not None :
-            file.write('  Icon: '+str(self.icon)+'\n')
+            file.write('    Icon: '+str(self.icon)+'\n')
         if self.allow is not None :
-            file.write('  Allow: '+str(self.allow)+'\n')
+            file.write('    Allow: '+str(self.allow)+'\n')
         if self.deny is not None :
-            file.write('  Deny: '+str(self.deny)+'\n')
+            file.write('    Deny: '+str(self.deny)+'\n')
         if self.sectorMapType is not None :
-            file.write('  SectorMapType: '+str(self.sectorMapType)+'\n')
-        file.write('  Playfields:\n')
+            file.write('    SectorMapType: '+str(self.sectorMapType)+'\n')
+        file.write('    Playfields:\n')
         for item in self.playfields :
-            file.write('  - ')
+            file.write('      - ')
             item.write(file)
 
     def getDiff(self):
@@ -103,6 +104,9 @@ class SectorPlanet :
         self.addDeny(otherPlanet.name)
         otherPlanet.addDeny(self.name)
 
+    def isConnectedTo(self, otherPlanet):
+        return self.name in otherPlanet.allow  and otherPlanet.name in self.allow
+
     def addDeny(self, aName):
         if aName not in self.deny :
             self.deny.append(aName)
@@ -124,9 +128,14 @@ class SectorPlanet :
             return True
         return False
 
-    def isConnectedTo(self, otherPlanet):
-        return self.name in otherPlanet.allow  and otherPlanet.name in self.allow
+    def isStation(self):
+        return self.sectorMapType == 'Station'
 
+    def isPlanet(self):
+        return self.sectorMapType == 'Planet'
+
+    def isAsteroidField(self):
+        return self.sectorMapType == 'AsteroidField'
 
 class Planet :
     def __init__(self):
